@@ -39,17 +39,54 @@ class AplicacionDibujo:
         self.etiqueta_coord = ttk.Label(self.barra_lateral, text="Posición del mouse: ( , )")
         self.etiqueta_coord.pack(pady=5)
 
-        # Canvas events
-        self.lienzo.bind("<Motion>", self.actualizar_pos_mouse)
-        self.lienzo.bind("<Button-1>", self.al_clic)
-
         # Deletion controls
         marco_borrar = ttk.LabelFrame(self.barra_lateral, text="Controles de Borrado")
         marco_borrar.pack(fill='x', pady=10)
         ttk.Button(marco_borrar, text="Borrar Último", command=self.deshacer).pack(fill='x', pady=2)
         ttk.Button(marco_borrar, text="Borrar Todo", command=self.borrar_todo).pack(fill='x', pady=2)
 
-        # Storage for points and drawings
+        # Translation
+        marco_traslacion = ttk.LabelFrame(self.barra_lateral, text="Trasladar Figura")
+        marco_traslacion.pack(fill='x', pady=10)
+        ttk.Label(marco_traslacion, text="Desplazamiento en X").pack()
+        self.entrada_dx = ttk.Entry(marco_traslacion)
+        self.entrada_dx.insert(0, "0")
+        self.entrada_dx.pack()
+        ttk.Label(marco_traslacion, text="Desplazamiento en Y").pack()
+        self.entrada_dy = ttk.Entry(marco_traslacion)
+        self.entrada_dy.insert(0, "0")
+        self.entrada_dy.pack()
+        ttk.Button(marco_traslacion, text="Trasladar", command=self.trasladar_figura).pack(fill='x', pady=5)
+
+        # Scaling
+        marco_escala = ttk.LabelFrame(self.barra_lateral, text="Escalar Figura")
+        marco_escala.pack(fill='x', pady=10)
+        ttk.Label(marco_escala, text="Factor de Escalado").pack()
+        self.entrada_escala = ttk.Entry(marco_escala)
+        self.entrada_escala.insert(0, "1.0")
+        self.entrada_escala.pack()
+        ttk.Button(marco_escala, text="Escalar", command=self.escalar_figura).pack(fill='x', pady=5)
+
+        # Symmetry
+        marco_simetria = ttk.LabelFrame(self.barra_lateral, text="Simetría")
+        marco_simetria.pack(fill='x', pady=10)
+        ttk.Button(marco_simetria, text="Simetría en Eje X", command=self.simetria_x).pack(fill='x', pady=2)
+        ttk.Button(marco_simetria, text="Simetría en Eje Y", command=self.simetria_y).pack(fill='x', pady=2)
+
+        # Rotation
+        marco_rotacion = ttk.LabelFrame(self.barra_lateral, text="Rotar Figura")
+        marco_rotacion.pack(fill='x', pady=10)
+        ttk.Label(marco_rotacion, text="Ángulo (°)").pack()
+        self.entrada_angulo = ttk.Entry(marco_rotacion)
+        self.entrada_angulo.insert(0, "0")
+        self.entrada_angulo.pack()
+        ttk.Button(marco_rotacion, text="Rotar", command=self.rotar_figura).pack(fill='x', pady=5)
+
+        # Canvas events
+        self.lienzo.bind("<Motion>", self.actualizar_pos_mouse)
+        self.lienzo.bind("<Button-1>", self.al_clic)
+
+        # Storage
         self.puntos = []
         self.formas_temporales = []
         self.formas_dibujadas = []
@@ -84,7 +121,6 @@ class AplicacionDibujo:
         color_previsualizacion = "light gray"
         formas_temp = []
         puntos = self.puntos + [punto_actual]
-
         self.borrar_formas_temporales()
 
         if tipo == "línea" and len(puntos)==2:
@@ -147,6 +183,77 @@ class AplicacionDibujo:
             for forma in ids:
                 self.lienzo.delete(forma)
         self.formas_dibujadas.clear()
+
+    def trasladar_figura(self):
+        if not self.formas_dibujadas:
+            return
+        try:
+            dx = int(self.entrada_dx.get()) * 10
+            dy = int(self.entrada_dy.get()) * 10
+        except ValueError:
+            return
+        ids, puntos = self.formas_dibujadas.pop()
+        for forma in ids:
+            self.lienzo.delete(forma)
+        T = np.array([[1,0,dx],[0,1,dy],[0,0,1]])
+        nuevos_puntos = [tuple((T @ np.array([[x],[y],[1]])).flatten()[:2].astype(int)) for x,y in puntos]
+        self.dibujar_figura(nuevos_puntos)
+
+    def escalar_figura(self):
+        if not self.formas_dibujadas:
+            return
+        try:
+            factor = float(self.entrada_escala.get())
+        except ValueError:
+            return
+        ids, puntos = self.formas_dibujadas.pop()
+        for forma in ids:
+            self.lienzo.delete(forma)
+        px, py = puntos[0]
+        S = np.array([[factor,0,px*(1-factor)],[0,factor,py*(1-factor)],[0,0,1]])
+        nuevos_puntos = [tuple((S @ np.array([[x],[y],[1]])).flatten()[:2].astype(int)) for x,y in puntos]
+        self.dibujar_figura(nuevos_puntos)
+
+    def simetria_x(self):
+        self.aplicar_simetria(np.array([[1,0,0],[0,-1,0],[0,0,1]]))
+
+    def simetria_y(self):
+        self.aplicar_simetria(np.array([[-1,0,0],[0,1,0],[0,0,1]]))
+
+    def aplicar_simetria(self, matriz):
+        if not self.formas_dibujadas:
+            return
+        ids, puntos = self.formas_dibujadas.pop()
+        for forma in ids:
+            self.lienzo.delete(forma)
+        xs, ys = zip(*puntos)
+        cx, cy = sum(xs)/len(xs), sum(ys)/len(ys)
+        T1 = np.array([[1,0,-cx],[0,1,-cy],[0,0,1]])
+        T2 = np.array([[1,0,cx],[0,1,cy],[0,0,1]])
+        M = T2 @ matriz @ T1
+        nuevos_puntos = [tuple((M @ np.array([[x],[y],[1]])).flatten()[:2].astype(int)) for x,y in puntos]
+        self.dibujar_figura(nuevos_puntos)
+
+    def rotar_figura(self):
+        if not self.formas_dibujadas:
+            return
+        try:
+            angulo = float(self.entrada_angulo.get())
+        except ValueError:
+            return
+        rad = math.radians(angulo)
+        cos_a, sin_a = math.cos(rad), math.sin(rad)
+        R = np.array([[cos_a,-sin_a,0],[sin_a,cos_a,0],[0,0,1]])
+        ids, puntos = self.formas_dibujadas.pop()
+        for forma in ids:
+            self.lienzo.delete(forma)
+        xs, ys = zip(*puntos)
+        cx, cy = sum(xs)/len(xs), sum(ys)/len(ys)
+        T1 = np.array([[1,0,-cx],[0,1,-cy],[0,0,1]])
+        T2 = np.array([[1,0,cx],[0,1,cy],[0,0,1]])
+        M = T2 @ R @ T1
+        nuevos_puntos = [tuple((M @ np.array([[x],[y],[1]])).flatten()[:2].astype(int)) for x,y in puntos]
+        self.dibujar_figura(nuevos_puntos)
 
 # --- Main ---
 if __name__ == "__main__":
