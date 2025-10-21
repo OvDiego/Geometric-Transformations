@@ -8,16 +8,14 @@ class AplicacionDibujo:
     def __init__(self, raiz):
         self.raiz = raiz
         self.raiz.title("Dibujo de Figuras Geométricas")
-        self.raiz.geometry("1200x700") 
+        self.raiz.geometry("1100x700") 
 
         self.marco_principal = tk.Frame(raiz)
         self.marco_principal.pack(fill=tk.BOTH, expand=True)
 
-       
         script_dir = os.path.dirname(os.path.abspath(__file__))
         media_dir = os.path.join(script_dir, "media")
 
-       
         self.undo_icon = tk.PhotoImage(file=os.path.join(media_dir, "previous.png"))
         self.redo_icon = tk.PhotoImage(file=os.path.join(media_dir, "next.png"))
         self.shape_icon = tk.PhotoImage(file=os.path.join(media_dir, "period.png"))
@@ -25,17 +23,26 @@ class AplicacionDibujo:
         self.move_icon = tk.PhotoImage(file=os.path.join(media_dir, "translate.png"))
         self.scale_icon = tk.PhotoImage(file=os.path.join(media_dir, "scale.png"))
         self.rotate_icon = tk.PhotoImage(file=os.path.join(media_dir, "view.png"))
-        self.symmetry_icon = tk.PhotoImage(file=os.path.join(media_dir, "reflect.png"))
         
-        
+        # --- Top Toolbar ---
         self.barra_superior = tk.Frame(self.marco_principal, padx=5, pady=5)
         self.barra_superior.pack(side=tk.TOP, fill=tk.X)
 
+        # --- Status Bar (at the bottom) ---
+        self.barra_estado = tk.Frame(self.marco_principal, padx=5, pady=2, bd=1, relief=tk.SUNKEN)
+        self.barra_estado.pack(side=tk.BOTTOM, fill=tk.X)
         
+        self.etiqueta_estado = ttk.Label(self.barra_estado, text="Seleccione una figura para comenzar.")
+        self.etiqueta_estado.pack(side=tk.LEFT)
+        
+        self.etiqueta_coord = ttk.Label(self.barra_estado, text="Posición: ( , )")
+        self.etiqueta_coord.pack(side=tk.RIGHT)
+
+        # --- Canvas (in the middle) ---
         self.lienzo = tk.Canvas(self.marco_principal, bg="white")
         self.lienzo.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
-        
+        # --- Toolbar Widgets ---
         marco_figura = ttk.LabelFrame(self.barra_superior, text="Tipo de Figura")
         marco_figura.pack(side=tk.LEFT, padx=5, pady=2)
         
@@ -45,7 +52,6 @@ class AplicacionDibujo:
                                    values=["línea", "circulo", "arco"], state="readonly", width=8)
         figure_menu.pack(side=tk.LEFT, padx=5, pady=5)
         figure_menu.bind("<<ComboboxSelected>>", self.on_figure_select)
-
 
         marco_color = ttk.LabelFrame(self.barra_superior, text="Color")
         marco_color.pack(side=tk.LEFT, padx=5, pady=2)
@@ -58,29 +64,24 @@ class AplicacionDibujo:
 
         self.crear_controles_transformacion()
 
-        
         marco_historial = ttk.LabelFrame(self.barra_superior, text="Historial")
         marco_historial.pack(side=tk.LEFT, padx=5, pady=2)
         
         ttk.Button(marco_historial, image=self.undo_icon, command=self.deshacer).pack(side=tk.LEFT, padx=2, pady=5)
         ttk.Button(marco_historial, image=self.redo_icon, command=self.rehacer).pack(side=tk.LEFT, padx=2, pady=5)
-        
-        self.etiqueta_coord = ttk.Label(self.barra_superior, text="Posición: ( , )")
-        self.etiqueta_coord.pack(side=tk.RIGHT, padx=10)
 
-       
         self.lienzo.bind("<Motion>", self.actualizar_pos_mouse)
         self.lienzo.bind("<Button-1>", self.al_clic)
 
-        
         self.puntos = []
         self.formas_temporales = []
         self.formas_dibujadas = []
         self.formas_deshechas = [] 
+        
+        self.actualizar_estado() # Initial status message
 
     def crear_controles_transformacion(self):
         """Helper function to create transformation controls in the top bar."""
-        # Translation
         marco_traslacion = ttk.LabelFrame(self.barra_superior, text="Trasladar")
         marco_traslacion.pack(side=tk.LEFT, padx=5, pady=2)
         ttk.Label(marco_traslacion, text="X:").pack(side=tk.LEFT, pady=5)
@@ -93,7 +94,6 @@ class AplicacionDibujo:
         self.entrada_dy.pack(side=tk.LEFT, pady=5)
         ttk.Button(marco_traslacion, text="Mover", image=self.move_icon, compound=tk.LEFT, command=self.trasladar_figura).pack(side=tk.LEFT, padx=5, pady=5)
 
-        # Scaling
         marco_escala = ttk.LabelFrame(self.barra_superior, text="Escalar")
         marco_escala.pack(side=tk.LEFT, padx=5, pady=2)
         ttk.Label(marco_escala, text="Factor:").pack(side=tk.LEFT, pady=5)
@@ -102,7 +102,6 @@ class AplicacionDibujo:
         self.entrada_escala.pack(side=tk.LEFT, pady=5)
         ttk.Button(marco_escala, text="Escalar", image=self.scale_icon, compound=tk.LEFT, command=self.escalar_figura).pack(side=tk.LEFT, padx=5, pady=5)
 
-        # Rotation
         marco_rotacion = ttk.LabelFrame(self.barra_superior, text="Rotar")
         marco_rotacion.pack(side=tk.LEFT, padx=5, pady=2)
         ttk.Label(marco_rotacion, text="Ángulo(°):").pack(side=tk.LEFT, pady=5)
@@ -110,22 +109,31 @@ class AplicacionDibujo:
         self.entrada_angulo.insert(0, "15")
         self.entrada_angulo.pack(side=tk.LEFT, pady=5)
         ttk.Button(marco_rotacion, text="Rotar", image=self.rotate_icon, compound=tk.LEFT, command=self.rotar_figura).pack(side=tk.LEFT, padx=5, pady=5)
-        
-        # Symmetry
-        marco_simetria = ttk.LabelFrame(self.barra_superior, text="Simetría")
-        marco_simetria.pack(side=tk.LEFT, padx=5, pady=2)
-        
-        self.eje_simetria = tk.StringVar(value="Eje X")
-        eje_menu = ttk.Combobox(marco_simetria, textvariable=self.eje_simetria,
-                                  values=["Eje X", "Eje Y"], state="readonly", width=7)
-        eje_menu.pack(side=tk.LEFT, padx=5, pady=5)
-
-        ttk.Button(marco_simetria, text="Aplicar", image=self.symmetry_icon, compound=tk.LEFT, command=self.aplicar_simetria).pack(side=tk.LEFT, padx=5, pady=5)
 
     def on_figure_select(self, event=None):
         """Resets points when the figure type changes."""
         self.puntos = []
         self.borrar_formas_temporales()
+        self.actualizar_estado()
+
+    def actualizar_estado(self):
+        """Updates the status bar with instructions for the user."""
+        figura = self.tipo_figura.get()
+        puntos_hechos = len(self.puntos)
+        
+        mensaje = ""
+        if figura == 'línea':
+            if puntos_hechos == 0: mensaje = "Haz clic para el punto de inicio de la línea."
+            elif puntos_hechos == 1: mensaje = "Haz clic para el punto final de la línea."
+        elif figura == 'circulo':
+            if puntos_hechos == 0: mensaje = "Haz clic para definir el centro del círculo."
+            elif puntos_hechos == 1: mensaje = "Haz clic para definir el radio del círculo."
+        elif figura == 'arco':
+            if puntos_hechos == 0: mensaje = "Haz clic para el punto de inicio del arco."
+            elif puntos_hechos == 1: mensaje = "Haz clic para el punto final del arco."
+            elif puntos_hechos == 2: mensaje = "Haz clic en un punto para definir la curvatura del arco."
+
+        self.etiqueta_estado.config(text=mensaje)
 
     def actualizar_pos_mouse(self, evento):
         self.etiqueta_coord.config(text=f"Posición: ({evento.x}, {evento.y})")
@@ -140,6 +148,8 @@ class AplicacionDibujo:
             self.dibujar_figura(self.puntos)
             self.puntos = []
             self.borrar_formas_temporales()
+        
+        self.actualizar_estado()
 
     def borrar_formas_temporales(self):
         for forma in self.formas_temporales:
@@ -222,7 +232,7 @@ class AplicacionDibujo:
         
         if ids:
             self.formas_dibujadas.append({'ids': ids, 'puntos': puntos, 'tipo': tipo, 'color': color})
-            self.formas_deshechas.clear() # Clear redo stack on new action
+            self.formas_deshechas.clear() 
 
     def redibujar_figura(self, figura_dict):
         puntos = figura_dict['puntos']; tipo = figura_dict['tipo']; color = figura_dict['color']
@@ -277,7 +287,8 @@ class AplicacionDibujo:
     def trasladar_figura(self):
         if not self.formas_dibujadas: return
         try:
-            dx = int(self.entrada_dx.get()); dy = int(self.entrada_dy.get())
+            dx = int(self.entrada_dx.get())
+            dy = -int(self.entrada_dy.get()) 
         except ValueError: return
 
         T = np.array([[1, 0, dx], [0, 1, dy], [0, 0, 1]])
@@ -296,17 +307,6 @@ class AplicacionDibujo:
         S = np.array([[factor, 0, 0], [0, factor, 0], [0, 0, 1]])
         self.aplicar_transformacion(S)
 
-    def aplicar_simetria(self):
-        eje = self.eje_simetria.get()
-        if eje == "Eje X":
-            matriz = np.array([[1, 0, 0], [0, -1, 0], [0, 0, 1]])
-        elif eje == "Eje Y":
-            matriz = np.array([[-1, 0, 0], [0, 1, 0], [0, 0, 1]])
-        else:
-            return 
-        
-        self.aplicar_transformacion(matriz)
-
     def rotar_figura(self):
         try: angulo = float(self.entrada_angulo.get())
         except ValueError: return
@@ -319,3 +319,4 @@ if __name__ == "__main__":
     raiz = tk.Tk()
     app = AplicacionDibujo(raiz)
     raiz.mainloop()
+
