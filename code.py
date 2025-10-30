@@ -7,8 +7,8 @@ import os
 class AplicacionDibujo:
     def __init__(self, raiz):
         self.raiz = raiz
-        self.raiz.title("Transformaciones Geometricas")
-        self.raiz.geometry("1150x700")
+        self.raiz.title("GRAFICACIÓN Y TRANSFORMACIONES GEOMETRICAS")
+        self.raiz.geometry("1365x710")
 
         self.modo_oscuro = False
 
@@ -92,15 +92,16 @@ class AplicacionDibujo:
             self.move_icon = self.scale_icon = self.rotate_icon = self.dark_mode_icon = None
 
     def crear_widgets_barra_superior(self):
-        marco_figura = ttk.LabelFrame(self.barra_superior, text="Tipo de Figura")
+        marco_figura = ttk.LabelFrame(self.barra_superior, text="Figura")
         marco_figura.pack(side=tk.LEFT, padx=5, pady=2)
         if self.shape_icon:
             ttk.Label(marco_figura, image=self.shape_icon).pack(side=tk.LEFT, padx=(5,0), pady=5)
-        self.tipo_figura = tk.StringVar(value="línea")
+        self.tipo_figura = tk.StringVar(value="Línea")
         figure_menu = ttk.Combobox(marco_figura, textvariable=self.tipo_figura,
-                                   values=["línea", "circulo", "arco"], state="readonly", width=8)
+                                values=["Línea", "Círculo", "Arco"], state="readonly", width=8)
         figure_menu.pack(side=tk.LEFT, padx=5, pady=5)
         figure_menu.bind("<<ComboboxSelected>>", self.on_figure_select)
+
 
         marco_color = ttk.LabelFrame(self.barra_superior, text="Color")
         marco_color.pack(side=tk.LEFT, padx=5, pady=2)
@@ -109,18 +110,29 @@ class AplicacionDibujo:
         self.color = tk.StringVar(value="Azul")
         self.colores_disponibles = ["Negro", "Azul", "Rojo", "Verde", "Amarillo", "Naranja", "Morado"]
         menu_color = ttk.Combobox(marco_color, textvariable=self.color,
-                                  values=self.colores_disponibles, state="readonly", width=8)
+                                values=self.colores_disponibles, state="readonly", width=8)
         menu_color.current(1)
         menu_color.pack(side=tk.LEFT, padx=5, pady=5)
 
+        marco_grosor = ttk.LabelFrame(self.barra_superior, text="Grosor de Línea")
+        marco_grosor.pack(side=tk.LEFT, padx=5, pady=5)
+        self.grosor_linea = tk.IntVar(value=2)
+        self.slider_grosor = ttk.Scale(marco_grosor, from_=1, to=10, variable=self.grosor_linea)
+        self.slider_grosor.pack(side=tk.LEFT, padx=5, pady=5)
+        self.etiqueta_grosor = ttk.Label(marco_grosor, text="2")  # Iniciar con valor 2
+        self.etiqueta_grosor.pack(side=tk.LEFT, padx=5, pady=5)
+        self.slider_grosor.bind("<Motion>", self.actualizar_grosor)
+
         self.crear_controles_transformacion()
 
-        marco_historial = ttk.LabelFrame(self.barra_superior, text="Historial")
+        marco_historial = ttk.LabelFrame(self.barra_superior, text="      Deshacer/Rehacer")
         marco_historial.pack(side=tk.LEFT, padx=5, pady=2)
-        ttk.Button(marco_historial, image=self.undo_icon, command=self.deshacer, text="" if self.undo_icon else "Deshacer").pack(side=tk.LEFT, padx=2, pady=5)
-        ttk.Button(marco_historial, image=self.redo_icon, command=self.rehacer, text="" if self.redo_icon else "Rehacer").pack(side=tk.LEFT, padx=2, pady=5)
+        ttk.Button(marco_historial, image=self.undo_icon, command=self.deshacer, text="" if self.undo_icon else "Deshacer").pack(side=tk.LEFT, padx=15, pady=5)
+        ttk.Button(marco_historial, image=self.redo_icon, command=self.rehacer, text="" if self.redo_icon else "Rehacer").pack(side=tk.LEFT, padx=15, pady=5)
 
-        ttk.Button(self.barra_superior, image=self.dark_mode_icon, command=self.toggle_modo_oscuro).pack(side=tk.RIGHT, padx=5, pady=5)
+        ttk.Button(self.barra_superior, text="Limpiar", command=self.limpiar_lienzo).pack(side=tk.LEFT, padx=5, pady=5)
+
+        ttk.Button(self.barra_superior, image=self.dark_mode_icon, command=self.toggle_modo_oscuro).pack(side=tk.RIGHT, padx=18, pady=10)
 
 
     def configurar_estilo_claro(self):
@@ -130,9 +142,9 @@ class AplicacionDibujo:
         self.style.configure(".", background="SystemButtonFace", foreground="black")
         self.style.configure("TFrame", background="SystemButtonFace")
         self.style.configure("TLabel", background="SystemButtonFace", foreground="black")
-        self.style.configure("TButton", background="#e1e1e1", foreground="black", borderwidth=1)
+        self.style.configure("TButton", background="#f2f2f2", foreground="black", borderwidth=1)
         self.style.map("TButton", background=[('active', '#d1d1d1')])
-        self.style.configure("TLabelframe", background="SystemButtonFace", bordercolor="#c1c1c1")
+        self.style.configure("TLabelframe", background="SystemButtonFace", bordercolor="#000000")
         self.style.configure("TLabelframe.Label", background="SystemButtonFace", foreground="black")
 
         self.style.configure("TCombobox", fieldbackground="white", background="white", foreground="black")
@@ -209,18 +221,6 @@ class AplicacionDibujo:
             self.redibujar_figura(figura)
 
     def crear_controles_transformacion(self):
-        marco_traslacion = ttk.LabelFrame(self.barra_superior, text="Trasladar")
-        marco_traslacion.pack(side=tk.LEFT, padx=5, pady=2)
-        ttk.Label(marco_traslacion, text="X:").pack(side=tk.LEFT, pady=5)
-        self.entrada_dx = ttk.Entry(marco_traslacion, width=4)
-        self.entrada_dx.insert(0, "10")
-        self.entrada_dx.pack(side=tk.LEFT, pady=5)
-        ttk.Label(marco_traslacion, text="Y:").pack(side=tk.LEFT, pady=5)
-        self.entrada_dy = ttk.Entry(marco_traslacion, width=4)
-        self.entrada_dy.insert(0, "10")
-        self.entrada_dy.pack(side=tk.LEFT, pady=5)
-        ttk.Button(marco_traslacion, text="Mover", image=self.move_icon, compound=tk.LEFT if self.move_icon else tk.NONE, command=self.trasladar_figura).pack(side=tk.LEFT, padx=5, pady=5)
-
         marco_escala = ttk.LabelFrame(self.barra_superior, text="Escalar")
         marco_escala.pack(side=tk.LEFT, padx=5, pady=2)
         ttk.Label(marco_escala, text="Factor:").pack(side=tk.LEFT, pady=5)
@@ -237,6 +237,19 @@ class AplicacionDibujo:
         self.entrada_angulo.pack(side=tk.LEFT, pady=5)
         ttk.Button(marco_rotacion, text="Rotar", image=self.rotate_icon, compound=tk.LEFT if self.rotate_icon else tk.NONE, command=self.rotar_figura).pack(side=tk.LEFT, padx=5, pady=5)
 
+        marco_traslacion = ttk.LabelFrame(self.barra_superior, text="Trasladar")
+        marco_traslacion.pack(side=tk.LEFT, padx=5, pady=2)
+        ttk.Label(marco_traslacion, text="X:").pack(side=tk.LEFT, pady=5)
+        self.entrada_dx = ttk.Entry(marco_traslacion, width=4)
+        self.entrada_dx.insert(0, "10")
+        self.entrada_dx.pack(side=tk.LEFT, pady=5)
+        ttk.Label(marco_traslacion, text="Y:").pack(side=tk.LEFT, pady=5)
+        self.entrada_dy = ttk.Entry(marco_traslacion, width=4)
+        self.entrada_dy.insert(0, "10")
+        self.entrada_dy.pack(side=tk.LEFT, pady=5)
+        ttk.Button(marco_traslacion, text="Mover", image=self.move_icon, compound=tk.LEFT if self.move_icon else tk.NONE, command=self.trasladar_figura).pack(side=tk.LEFT, padx=5, pady=5)
+
+
     def on_figure_select(self, event=None):
         self.puntos = []
         self.borrar_formas_temporales()
@@ -246,13 +259,13 @@ class AplicacionDibujo:
         figura = self.tipo_figura.get()
         puntos_hechos = len(self.puntos)
         mensaje = ""
-        if figura == 'línea':
+        if figura == 'Línea':
             if puntos_hechos == 0: mensaje = "Haz clic para el punto de inicio de la línea."
             elif puntos_hechos == 1: mensaje = "Haz clic para el punto final de la línea."
-        elif figura == 'circulo':
+        elif figura == 'Círculo':
             if puntos_hechos == 0: mensaje = "Haz clic para definir el centro del círculo."
             elif puntos_hechos == 1: mensaje = "Haz clic para definir el radio del círculo."
-        elif figura == 'arco':
+        elif figura == 'Arco':
             if puntos_hechos == 0: mensaje = "Haz clic para el punto de inicio del arco."
             elif puntos_hechos == 1: mensaje = "Haz clic para el punto final del arco."
             elif puntos_hechos == 2: mensaje = "Haz clic en un punto para definir la curvatura del arco."
@@ -268,7 +281,7 @@ class AplicacionDibujo:
     def al_clic(self, evento):
         self.puntos.append((evento.x, evento.y))
         tipo = self.tipo_figura.get()
-        puntos_necesarios = {"línea": 2, "circulo": 2, "arco": 3}.get(tipo)
+        puntos_necesarios = {"Línea": 2, "Círculo": 2, "Arco": 3}.get(tipo)
         if puntos_necesarios is None: return
 
         if len(self.puntos) == puntos_necesarios:
@@ -342,13 +355,13 @@ class AplicacionDibujo:
 
         if not self.lienzo.winfo_exists(): return
 
-        if tipo == "línea" and len(puntos) == 2:
+        if tipo == "Línea" and len(puntos) == 2:
             self.formas_temporales.append(self.lienzo.create_line(*puntos[0], *puntos[1], fill=color_previsualizacion, dash=(3, 2)))
-        elif tipo == "circulo" and len(puntos) == 2:
+        elif tipo == "Círculo" and len(puntos) == 2:
             x0, y0 = puntos[0]; x1, y1 = puntos[1]
             r = ((x1 - x0) ** 2 + (y1 - y0) ** 2) ** 0.5
             self.formas_temporales.append(self.lienzo.create_oval(x0 - r, y0 - r, x0 + r, y0 + r, outline=color_previsualizacion, dash=(3, 2)))
-        elif tipo == "arco":
+        elif tipo == "Arco":
             if len(puntos) == 2: self.formas_temporales.append(self.lienzo.create_line(*puntos[0], *puntos[1], fill=color_previsualizacion, dash=(3,2)))
             elif len(puntos) == 3:
                 arc_params = self.calcular_arco_desde_puntos(*puntos)
@@ -359,6 +372,7 @@ class AplicacionDibujo:
     def dibujar_figura(self, puntos):
         tipo = self.tipo_figura.get()
         color_nombre = self.color.get()
+        grosor = self.grosor_linea.get()  
 
         mapa_colores_normal = {"Negro": "black", "Azul": "blue", "Rojo": "red", "Verde": "green", "Amarillo": "yellow", "Naranja": "orange", "Morado": "purple"}
         mapa_colores_neon = {"Negro": "#cccccc", "Azul": "cyan", "Rojo": "magenta", "Verde": "lime", "Amarillo": "#FFFF00", "Naranja": "#FFA500", "Morado": "#DA70D6"}
@@ -367,20 +381,21 @@ class AplicacionDibujo:
         color_valor = mapa_colores.get(color_nombre, "black")
 
         ids = []
-        figura_data = {'puntos': puntos, 'tipo': tipo, 'color_nombre': color_nombre}
+        figura_data = {'puntos': puntos, 'tipo': tipo, 'color_nombre': color_nombre, 'grosor': grosor}
 
         if not self.lienzo.winfo_exists(): return
 
-        if tipo == "línea": ids.append(self.lienzo.create_line(puntos, fill=color_valor, width=2))
-        elif tipo == "circulo":
+        if tipo == "Línea": 
+            ids.append(self.lienzo.create_line(puntos, fill=color_valor, width=grosor))  # Usar el grosor
+        elif tipo == "Círculo":
             x0, y0 = puntos[0]; x1, y1 = puntos[1]
             r = ((x1 - x0) ** 2 + (y1 - y0) ** 2) ** 0.5
-            ids.append(self.lienzo.create_oval(x0 - r, y0 - r, x0 + r, y0 + r, outline=color_valor, width=2))
-        elif tipo == "arco":
+            ids.append(self.lienzo.create_oval(x0 - r, y0 - r, x0 + r, y0 + r, outline=color_valor, width=grosor))  # Usar el grosor
+        elif tipo == "Arco":
             arc_params = self.calcular_arco_desde_puntos(*puntos)
             if arc_params:
                 bbox, start, extent = arc_params
-                ids.append(self.lienzo.create_arc(bbox, start=start, extent=extent, style=tk.ARC, outline=color_valor, width=2))
+                ids.append(self.lienzo.create_arc(bbox, start=start, extent=extent, style=tk.ARC, outline=color_valor, width=grosor))  # Usar el grosor
 
         if ids:
             figura_data['ids'] = ids
@@ -388,12 +403,14 @@ class AplicacionDibujo:
             self.formas_deshechas.clear()
 
     def redibujar_figura(self, figura_dict):
-        puntos = figura_dict.get('puntos'); tipo = figura_dict.get('tipo');
+        puntos = figura_dict.get('puntos')
+        tipo = figura_dict.get('tipo')
         color_nombre = figura_dict.get('color_nombre', 'Negro')
+        grosor = figura_dict.get('grosor', 2) 
 
         if not puntos or not tipo:
-             print(f"Skipping redraw due to missing points or type: {figura_dict}")
-             return
+            print(f"Skipping redraw due to missing points or type: {figura_dict}")
+            return
 
         mapa_colores_normal = {"Negro": "black", "Azul": "blue", "Rojo": "red", "Verde": "green", "Amarillo": "yellow", "Naranja": "orange", "Morado": "purple"}
         mapa_colores_neon = {"Negro": "#cccccc", "Azul": "cyan", "Rojo": "magenta", "Verde": "lime", "Amarillo": "#FFFF00", "Naranja": "#FFA500", "Morado": "#DA70D6"}
@@ -403,34 +420,32 @@ class AplicacionDibujo:
 
         ids = []
         valid_points = False
-        if tipo == "línea" and len(puntos) == 2: valid_points = True
-        elif tipo == "circulo" and len(puntos) == 2: valid_points = True
-        elif tipo == "arco" and len(puntos) == 3: valid_points = True
+        if tipo == "Línea" and len(puntos) == 2: valid_points = True
+        elif tipo == "Círculo" and len(puntos) == 2: valid_points = True
+        elif tipo == "Arco" and len(puntos) == 3: valid_points = True
 
         if not valid_points:
-             print(f"Skipping redraw due to incorrect number of points for type '{tipo}': {puntos}")
-             return
+            print(f"Skipping redraw due to incorrect number of points for type '{tipo}': {puntos}")
+            return
 
         if not self.lienzo.winfo_exists(): return
 
-        if tipo == "línea": ids.append(self.lienzo.create_line(puntos, fill=color_valor, width=2))
-        elif tipo == "circulo":
+        if tipo == "Línea": 
+            ids.append(self.lienzo.create_line(puntos, fill=color_valor, width=grosor))  # Usar el grosor al redibujar
+        elif tipo == "Círculo":
             x0, y0 = puntos[0]; x1, y1 = puntos[1]
             r = ((x1 - x0) ** 2 + (y1 - y0) ** 2) ** 0.5
-            if r > 0:
-                 ids.append(self.lienzo.create_oval(x0 - r, y0 - r, x0 + r, y0 + r, outline=color_valor, width=2))
-        elif tipo == "arco":
-             arc_params = self.calcular_arco_desde_puntos(*puntos)
-             if arc_params:
-                 bbox, start, extent = arc_params
-                 if all(isinstance(v, (int, float)) for v in bbox) and \
-                    isinstance(start, (int, float)) and isinstance(extent, (int, float)):
-                      ids.append(self.lienzo.create_arc(bbox, start=start, extent=extent, style=tk.ARC, outline=color_valor, width=2))
+            ids.append(self.lienzo.create_oval(x0 - r, y0 - r, x0 + r, y0 + r, outline=color_valor, width=grosor))  # Usar el grosor al redibujar
+        elif tipo == "Arco":
+            arc_params = self.calcular_arco_desde_puntos(*puntos)
+            if arc_params:
+                bbox, start, extent = arc_params
+                ids.append(self.lienzo.create_arc(bbox, start=start, extent=extent, style=tk.ARC, outline=color_valor, width=grosor))  # Usar el grosor al redibujar
 
         if ids:
             figura_dict['ids'] = ids
             if figura_dict not in self.formas_dibujadas:
-                 self.formas_dibujadas.append(figura_dict)
+                self.formas_dibujadas.append(figura_dict)
 
 
     def deshacer(self):
@@ -516,6 +531,19 @@ class AplicacionDibujo:
         cos_a, sin_a = math.cos(rad), math.sin(rad)
         R = np.array([[cos_a, -sin_a, 0], [sin_a, cos_a, 0], [0, 0, 1]])
         self.aplicar_transformacion(R)
+
+    def limpiar_lienzo(self):
+        self.lienzo.delete("all")
+        
+        self.formas_dibujadas.clear()  
+        self.formas_temporales.clear()  
+        self.formas_deshechas.clear()  
+        
+        print("Lienzo limpiado.")
+
+    def actualizar_grosor(self, event):
+        grosor = self.grosor_linea.get()
+        self.etiqueta_grosor.config(text=str(grosor)) 
 
 if __name__ == "__main__":
     raiz = tk.Tk()
