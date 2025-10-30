@@ -21,4 +21,4 @@ Para ejecutar este proyecto, necesitarás:
 
 ### Ejemplo:
 Si todo se instaló y compiló correctamente, se debería ver un visualizador como el siguiente:
-![](https://imgur.com/E9wCFa8.png)
+![](https://imgur.com/78G5GUX.png)
